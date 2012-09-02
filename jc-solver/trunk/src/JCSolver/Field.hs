@@ -62,7 +62,7 @@ flCreate numsHor numsVer = do
     flEnsureConsistency $ Field lnsHor lnsVer
 
 flTransformByLines :: TransformFunction Line -> TransformFunction Field 
-flTransformByLines f = slLoop $ \ fl -> do
+flTransformByLines f fl = do
     lnsHor <- mapM f (flHorLines fl)
     fl' <- flEnsureConsistency fl { flHorLines = lnsHor }
     lnsVer <- mapM f (flVerLines fl')

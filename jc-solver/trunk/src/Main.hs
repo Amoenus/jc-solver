@@ -57,10 +57,10 @@ solveMode inFile outFile = do
         $ maybeToList (flCreate hns vns) >>= slAllSolutions flForkByCells fieldTransform''
     where
         lineTransform = slSmartLoop $ lnSimpleTransform >=> lnTransformByExtremeOwners
-        lineTransform' = slSmartLoop $ slForkAndSyncAll lnForkByOwners lineTransform
-        fieldTransform = slSmartLoop $ flTransformByLines lineTransform >=> flTransformByLines lineTransform'
-        fieldTransform' = slSmartLoop $ slForkAndSmartSync flForkByCells fieldTransform
-        fieldTransform'' = fieldTransform >=> fieldTransform'
+        lineTransform' = slForkAndSyncAll lnForkByOwners lineTransform
+        fieldTransform = slSmartLoop $ slSmartLoop (flTransformByLines lineTransform) >=> flTransformByLines lineTransform'
+        fieldTransform' = slForkAndSmartSync flForkByCells fieldTransform
+        fieldTransform'' = slSmartLoop $ slSmartLoop fieldTransform >=> fieldTransform'
 
 pbm2CondMode :: ModeHandler
 pbm2CondMode inFile outFile = do

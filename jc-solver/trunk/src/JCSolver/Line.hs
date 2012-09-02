@@ -108,7 +108,7 @@ lnExtremeOwners bm nms = do
         h = findIndex (nmCanContainMask bm)
 
 lnTransformByExtremeOwners :: TransformFunction Line
-lnTransformByExtremeOwners = slLoop $ \ ln -> do
+lnTransformByExtremeOwners ln = do
     nms <- foldM (flip lnExtremeOwners) (lnNumbers ln) $ bmSplit $ lmFilledMask $ lnMask ln
     lnEnsureConsistency ln { lnNumbers = nms }
 
