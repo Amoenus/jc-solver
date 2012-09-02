@@ -51,10 +51,10 @@ lmEmptyMask :: LineMask -> BitMask
 lmEmptyMask lm = bmNot $ lmFilledMask lm `bmOr` lmBlockedMask lm
 
 lmCells :: LineMask -> [Cell]
-lmCells lm = zipWith
-    (\ f b -> if f then CellFilled else if b then CellBlocked else CellEmpty)
-    (bmBools $ lmFilledMask lm)
-    (bmBools $ lmBlockedMask lm)
+lmCells lm = zipWith f (bmBools $ lmFilledMask lm) (bmBools $ lmBlockedMask lm) where
+    f True _ = CellFilled
+    f _ True = CellBlocked
+    f _ _ = CellEmpty
 
 lmFill :: BitMask -> TransformFunction LineMask
 lmFill bm lm = lmEnsureConsistency lm { lmFilledMask = lmFilledMask lm `bmOr` bm }
