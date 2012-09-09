@@ -60,7 +60,7 @@ solveMode inFile outFile = do
         lineTransform' = slForkAndSyncAll lnForkByOwners lineTransform
         fieldTransform = slSmartLoop $ slSmartLoop (flTransformByLines lineTransform) >=> flTransformByLines lineTransform'
         fieldTransform' = slForkAndSmartSync flForkByCells fieldTransform
-        fieldTransform'' = slSmartLoop $ slSmartLoop fieldTransform >=> fieldTransform'
+        fieldTransform'' = slSmartLoop $ fieldTransform >=> fieldTransform'
 
 pbm2CondMode :: ModeHandler
 pbm2CondMode inFile outFile = do
