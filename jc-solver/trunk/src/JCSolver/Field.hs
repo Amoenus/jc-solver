@@ -46,7 +46,7 @@ instance Syncable Field where
         lnsVer <- unsafeZipWithM snAverage (flVerLines fl1) (flVerLines fl2)
         flEnsureConsistency $ Field lnsHor lnsVer
 
-flEnsureConsistency :: Field -> Maybe Field
+flEnsureConsistency :: TransformFunction Field
 flEnsureConsistency fl = do
     let lnsHor = flHorLines fl
     let lnsVer = flVerLines fl
