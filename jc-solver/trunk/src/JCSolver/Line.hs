@@ -4,7 +4,7 @@ module JCSolver.Line (
     lnCreate,
     -- * Getters
     lnMask,
-    lnNumbers,
+    lnBlocks,
     -- * Modification
     lnSyncWithLineMask,
     -- * Solve
@@ -31,99 +31,99 @@ import Data.Function (
     )
 import JCSolver.BitMask
 import JCSolver.LineMask
-import JCSolver.Number
+import JCSolver.Block
 import JCSolver.Utils
 import JCSolver.Solve
 
 data Line = Line {
     lnMask :: LineMask,
-    lnNumbers :: [Number]
+    lnBlocks :: [Block]
     } deriving Eq
 
 instance Show Line where
-    show ln = unlines $ show (lnMask ln) : map show (lnNumbers ln)
+    show ln = unlines $ show (lnMask ln) : map show (lnBlocks ln)
 
 instance Completable Line where
-    clIsCompleted ln = all clIsCompleted (lnNumbers ln)
+    clIsCompleted ln = all clIsCompleted (lnBlocks ln)
 
 instance Syncable Line where
     ln1 `snSync` ln2 = do
-        nms <- unsafeZipWithM snSync (lnNumbers ln1) (lnNumbers ln2)
+        bls <- unsafeZipWithM snSync (lnBlocks ln1) (lnBlocks ln2)
         lm <- lnMask ln1 `snSync` lnMask ln2
-        lnEnsureConsistency $ Line lm nms
+        lnEnsureConsistency $ Line lm bls
     ln1 `snAverage` ln2 = do
-        nms <- unsafeZipWithM snAverage (lnNumbers ln1) (lnNumbers ln2)
+        bls <- unsafeZipWithM snAverage (lnBlocks ln1) (lnBlocks ln2)
         lm <- lnMask ln1 `snAverage` lnMask ln2
-        lnEnsureConsistency $ Line lm nms
+        lnEnsureConsistency $ Line lm bls
 
-lnUpdateBlocked :: [Number] -> TransformFunction LineMask
+lnUpdateBlocked :: [Block] -> TransformFunction LineMask
 lnUpdateBlocked [] lm = lmBlock (bmNot $ lmBlockedMask lm) lm
-lnUpdateBlocked nms lm = lmBlock (bmNot $ bmUnion $ map nmScopeMask nms) lm
+lnUpdateBlocked bls lm = lmBlock (bmNot $ bmUnion $ map blScopeMask bls) lm
 
-lnUpdateFilled :: [Number] -> TransformFunction LineMask
+lnUpdateFilled :: [Block] -> TransformFunction LineMask
 lnUpdateFilled [] = return
-lnUpdateFilled nms = lmFill (bmUnion $ map nmToFillMask nms)
+lnUpdateFilled bls = lmFill (bmUnion $ map blToFillMask bls)
 
 lnEnsureConsistency :: TransformFunction Line
 lnEnsureConsistency ln = do
-    let nms = lnNumbers ln
-    lm <- lnUpdateBlocked nms >=> lnUpdateFilled nms $ lnMask ln
+    let bls = lnBlocks ln
+    lm <- lnUpdateBlocked bls >=> lnUpdateFilled bls $ lnMask ln
     return $ ln { lnMask = lm }
 
 lnCreate :: Int -> [Int] -> Maybe Line
 lnCreate len nums = do
-    nms <- mapM (nmCreate len) nums
-    lnEnsureConsistency $ Line (lmCreate len) nms
+    bls <- mapM (blCreate len) nums
+    lnEnsureConsistency $ Line (lmCreate len) bls
 
 lnSyncWithLineMask :: LineMask -> TransformFunction Line
 lnSyncWithLineMask lm ln = do
     lm' <- lm `snSync` lnMask ln
     return ln { lnMask = lm' }
 
-lnRemoveBlocked :: LineMask -> TransformFunction [Number]
-lnRemoveBlocked = mapM . nmExclude . lmBlockedMask
+lnRemoveBlocked :: LineMask -> TransformFunction [Block]
+lnRemoveBlocked = mapM . blExclude . lmBlockedMask
 
-lnRemoveFilled :: LineMask -> TransformFunction [Number]
-lnRemoveFilled lm = mapM (\ nm -> foldM f nm $ bmSplit $ lmFilledMask lm) where
-    f nm bm = if nmCanContainMask bm nm then return nm else nmExclude (bmExpand bm) nm
+lnRemoveFilled :: LineMask -> TransformFunction [Block]
+lnRemoveFilled lm = mapM (\ bl -> foldM f bl $ bmSplit $ lmFilledMask lm) where
+    f bl bm = if blCanContainMask bm bl then return bl else blExclude (bmExpand bm) bl
 
-lnExcludeNeighbours :: TransformFunction [Number]
-lnExcludeNeighbours nms = sequence $
-    scanr1 (flip $ wrap $ nmExclude . bmExpand . nmMinimumRightMask) $
-    scanl1 (wrap $ nmExclude . bmExpand . nmMinimumLeftMask) $
-    map return nms
+lnExcludeNeighbours :: TransformFunction [Block]
+lnExcludeNeighbours bls = sequence $
+    scanr1 (flip $ wrap $ blExclude . bmExpand . blMinimumRightMask) $
+    scanl1 (wrap $ blExclude . bmExpand . blMinimumLeftMask) $
+    map return bls
 
 lnSimpleTransform :: TransformFunction Line
 lnSimpleTransform ln = do
     let lm = lnMask ln
-    nms <- lnRemoveBlocked lm >=> slLoop (lnRemoveFilled lm >=> lnExcludeNeighbours) $ lnNumbers ln
-    lnEnsureConsistency ln { lnNumbers = nms }
+    bls <- lnRemoveBlocked lm >=> slLoop (lnRemoveFilled lm >=> lnExcludeNeighbours) $ lnBlocks ln
+    lnEnsureConsistency ln { lnBlocks = bls }
 
-lnExtremeOwners :: BitMask -> TransformFunction [Number]
-lnExtremeOwners bm nms = do
-    nms' <- fmap reverse $ maybe (return nms) (f bmLeftIncursion nms) (h nms)
-    fmap reverse $ maybe (return nms') (f bmRightIncursion nms') (h nms')
+lnExtremeOwners :: BitMask -> TransformFunction [Block]
+lnExtremeOwners bm bls = do
+    bls' <- fmap reverse $ maybe (return bls) (f bmLeftIncursion bls) (h bls)
+    fmap reverse $ maybe (return bls') (f bmRightIncursion bls') (h bls')
     where
-        f g = varyNth (\ nm -> nmKeep (g (nmNumber nm) bm) nm)
-        h = findIndex (nmCanContainMask bm)
+        f g = varyNth (\ bl -> blKeep (g (blNumber bl) bm) bl)
+        h = findIndex (blCanContainMask bm)
 
 lnTransformByExtremeOwners :: TransformFunction Line
 lnTransformByExtremeOwners ln = do
-    nms <- foldM (flip lnExtremeOwners) (lnNumbers ln) $ bmSplit $ lmFilledMask $ lnMask ln
-    lnEnsureConsistency ln { lnNumbers = nms }
+    bls <- foldM (flip lnExtremeOwners) (lnBlocks ln) $ bmSplit $ lmFilledMask $ lnMask ln
+    lnEnsureConsistency ln { lnBlocks = bls }
 
 lnForkByOwners :: ForkFunction Line
 lnForkByOwners ln = do
-    let nms = lnNumbers ln
+    let bls = lnBlocks ln
     bm <- bmSplit $ lmFilledMask $ lnMask ln
-    case findIndices (nmCanContainMask bm) nms of
+    case findIndices (blCanContainMask bm) bls of
         [_] -> []
         idxs -> return $ do
             idx <- idxs
             maybeToList $ do
-                nms' <- varyNth (g bm) nms idx
-                lnEnsureConsistency ln { lnNumbers = nms' }
-    where g bm nm = nmKeep ((bmAnd `on` ($ bm) . ($ nmNumber nm)) bmLeftIncursion bmRightIncursion) nm
+                bls' <- varyNth (g bm) bls idx
+                lnEnsureConsistency ln { lnBlocks = bls' }
+    where g bm bl = blKeep ((bmAnd `on` ($ bm) . ($ blNumber bl)) bmLeftIncursion bmRightIncursion) bl
 
 lnForkByCells :: ForkFunction Line
 lnForkByCells ln = do

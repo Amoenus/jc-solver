@@ -11,17 +11,17 @@ executable jc-solver
   hs-source-dirs: src
   main-is:        Main.hs
   other-modules:  JCSolver.BitMask,
+                  JCSolver.Block,
                   JCSolver.Cell,
+                  JCSolver.Completable,
                   JCSolver.Field,
                   JCSolver.Line,
                   JCSolver.LineMask,
-                  JCSolver.Number,
                   JCSolver.Opts,
                   JCSolver.Pbm,
                   JCSolver.Solve,
-                  JCSolver.Utils,
                   JCSolver.Syncable,
-                  JCSolver.Completable
+                  JCSolver.Utils
   build-depends:  base >= 4,
                   bytestring,
                   parsec,
